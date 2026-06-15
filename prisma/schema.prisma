@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Consultation {
+  id           String   @id @default(uuid())
+  name         String
+  age          Int
+  gender       String
+  phone        String
+  email        String
+  address      String
+  symptoms     String
+  document_url String?
+  created_at   DateTime @default(now())
+
+  @@map("consultations")
+}
+
+model Appointment {
+  id             String   @id @default(uuid())
+  patient_name   String
+  phone          String
+  email          String
+  preferred_date DateTime
+  message        String
+  created_at     DateTime @default(now())
+
+  @@map("appointments")
+}
+
+model ContactMessage {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  phone      String
+  message    String
+  created_at DateTime @default(now())
+
+  @@map("contact_messages")
+}
+
+model Visitor {
+  id            Int      @id @default(1)
+  visitor_count Int      @default(0)
+  updated_at    DateTime @updatedAt
+
+  @@map("visitors")
+}
