@@ -8,16 +8,19 @@ datasource db {
 }
 
 model Consultation {
-  id           String   @id @default(uuid())
-  name         String
-  age          Int
-  gender       String
-  phone        String
-  email        String
-  address      String
-  symptoms     String
-  document_url String?
-  created_at   DateTime @default(now())
+  id              String   @id @default(uuid())
+  name            String
+  age             Int
+  gender          String
+  phone           String
+  email           String?
+  address         String
+  symptoms        String
+  document_url    String?
+  document_urls   String[] @default([])
+  payment_category String?
+  consultation_fee Int?
+  created_at      DateTime @default(now())
 
   @@map("consultations")
 }
@@ -51,4 +54,29 @@ model Visitor {
   updated_at    DateTime @updatedAt
 
   @@map("visitors")
+}
+
+model Doctor {
+  id            String          @id @default(uuid())
+  name          String
+  email         String          @unique
+  password_hash String
+  is_active     Boolean         @default(true)
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+  sessions      DoctorSession[]
+
+  @@map("doctors")
+}
+
+model DoctorSession {
+  id         String   @id @default(uuid())
+  doctor_id  String
+  token_hash String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+  doctor     Doctor   @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+
+  @@index([doctor_id])
+  @@map("doctor_sessions")
 }

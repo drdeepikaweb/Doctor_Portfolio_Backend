@@ -19,4 +19,9 @@ export const env = {
     user: process.env.SMTP_USER || "",
     pass: process.env.SMTP_PASS || "",
   },
+  whatsapp: {
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+    to: process.env.WHATSAPP_TO || "",
+  },
 };
