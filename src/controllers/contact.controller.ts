@@ -6,7 +6,7 @@ export async function createContactMessage(req: Request, res: Response) {
   const contact = await prisma.contactMessage.create({
     data: {
       name: req.body.name,
-      email: req.body.email,
+      email: req.body.email || null,
       phone: req.body.phone,
       message: req.body.message,
     },
@@ -14,8 +14,8 @@ export async function createContactMessage(req: Request, res: Response) {
 
   await notifyClinic(
     "New contact form submission",
-    `<h2>Contact Message</h2><p><strong>Name:</strong> ${contact.name}</p><p><strong>Phone:</strong> ${contact.phone}</p><p><strong>Email:</strong> ${contact.email}</p><p>${contact.message}</p>`,
-    `New contact form submission\nName: ${contact.name}\nPhone: ${contact.phone}\nEmail: ${contact.email}\nMessage: ${contact.message}`,
+    `<h2>Contact Message</h2><p><strong>Name:</strong> ${contact.name}</p><p><strong>Phone:</strong> ${contact.phone}</p><p><strong>Email:</strong> ${contact.email || "Not provided"}</p><p>${contact.message}</p>`,
+    `New contact form submission\nName: ${contact.name}\nPhone: ${contact.phone}\nEmail: ${contact.email || "Not provided"}\nMessage: ${contact.message}`,
   );
 
   res.status(201).json({ message: "Contact message created", contact });

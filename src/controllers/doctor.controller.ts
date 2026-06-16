@@ -72,6 +72,15 @@ export async function listContactMessages(_req: AuthenticatedDoctorRequest, res:
   res.json({ contacts });
 }
 
+export async function listAppointments(_req: AuthenticatedDoctorRequest, res: Response) {
+  const appointments = await prisma.appointment.findMany({
+    orderBy: { created_at: "desc" },
+    take: 200,
+  });
+
+  res.json({ appointments });
+}
+
 export async function listConsultations(_req: AuthenticatedDoctorRequest, res: Response) {
   const consultations = await prisma.consultation.findMany({
     orderBy: { created_at: "desc" },

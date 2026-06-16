@@ -29,7 +29,7 @@ model Appointment {
   id             String   @id @default(uuid())
   patient_name   String
   phone          String
-  email          String
+  email          String?
   preferred_date DateTime
   message        String
   created_at     DateTime @default(now())
@@ -40,7 +40,7 @@ model Appointment {
 model ContactMessage {
   id         String   @id @default(uuid())
   name       String
-  email      String
+  email      String?
   phone      String
   message    String
   created_at DateTime @default(now())

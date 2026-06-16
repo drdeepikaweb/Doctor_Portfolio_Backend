@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createDoctorAccount, getDoctorProfile, listConsultations, listContactMessages, loginDoctor, logoutDoctor, } from "../controllers/doctor.controller.js";
+import { createDoctorAccount, getDoctorProfile, listAppointments, listConsultations, listContactMessages, loginDoctor, logoutDoctor, } from "../controllers/doctor.controller.js";
 import { requireDoctorAuth } from "../middleware/doctor-auth.js";
 import { sanitizeBody } from "../middleware/sanitize.js";
 import { validate } from "../middleware/validate.js";
@@ -9,5 +9,6 @@ doctorRouter.post("/setup", sanitizeBody, createDoctorRules, validate, createDoc
 doctorRouter.post("/login", sanitizeBody, loginDoctorRules, validate, loginDoctor);
 doctorRouter.get("/me", requireDoctorAuth, getDoctorProfile);
 doctorRouter.post("/logout", requireDoctorAuth, logoutDoctor);
+doctorRouter.get("/appointments", requireDoctorAuth, listAppointments);
 doctorRouter.get("/contacts", requireDoctorAuth, listContactMessages);
 doctorRouter.get("/consultations", requireDoctorAuth, listConsultations);
