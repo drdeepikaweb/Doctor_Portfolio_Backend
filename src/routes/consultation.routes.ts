@@ -7,4 +7,14 @@ import { consultationRules } from "../validators/consultation.validator.js";
 
 export const consultationRouter = Router();
 
-consultationRouter.post("/", upload.array("documents", 5), sanitizeBody, consultationRules, validate, createConsultation);
+consultationRouter.post(
+  "/",
+  upload.fields([
+    { name: "documents", maxCount: 5 },
+    { name: "id_document", maxCount: 1 },
+  ]),
+  sanitizeBody,
+  consultationRules,
+  validate,
+  createConsultation
+);

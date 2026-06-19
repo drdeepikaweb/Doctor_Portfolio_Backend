@@ -20,6 +20,11 @@ model Consultation {
   document_urls   String[] @default([])
   payment_category String?
   consultation_fee Int?
+  aadhaar_no       String?
+  id_document_url  String?
+  razorpay_order_id String?
+  razorpay_payment_id String?
+  razorpay_signature String?
   created_at      DateTime @default(now())
 
   @@map("consultations")
@@ -31,6 +36,14 @@ model Appointment {
   phone          String
   email          String?
   preferred_date DateTime
+  preferred_time String?
+  payment_category String?
+  consultation_fee Int?
+  aadhaar_no       String?
+  id_document_url  String?
+  razorpay_order_id String?
+  razorpay_payment_id String?
+  razorpay_signature String?
   message        String
   created_at     DateTime @default(now())
 
@@ -79,4 +92,11 @@ model DoctorSession {
 
   @@index([doctor_id])
   @@map("doctor_sessions")
+}
+
+model Setting {
+  key   String @id
+  value String
+
+  @@map("settings")
 }

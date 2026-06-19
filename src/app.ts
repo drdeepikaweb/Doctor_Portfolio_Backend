@@ -13,6 +13,7 @@ import { contactRouter } from "./routes/contact.routes.js";
 import { doctorRouter } from "./routes/doctor.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
 import { visitorRouter } from "./routes/visitor.routes.js";
+import { paymentRouter } from "./routes/payment.routes.js";
 
 export const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/consultations", consultationRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/visitors", visitorRouter);
 app.use("/api/doctors", doctorRouter);
+app.use("/api/payments", paymentRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ message: "Route not found" });

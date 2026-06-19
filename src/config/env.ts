@@ -24,4 +24,8 @@ export const env = {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
     to: process.env.WHATSAPP_TO || "",
   },
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_dummykeyid",
+    keySecret: process.env.RAZORPAY_KEY_SECRET || "dummysecret",
+  },
 };
