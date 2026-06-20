@@ -16,6 +16,9 @@ model Consultation {
   email           String?
   address         String
   symptoms        String
+  preferred_date  DateTime?
+  preferred_time  String?
+  is_completed    Boolean  @default(false)
   document_url    String?
   document_urls   String[] @default([])
   payment_category String?
@@ -28,26 +31,6 @@ model Consultation {
   created_at      DateTime @default(now())
 
   @@map("consultations")
-}
-
-model Appointment {
-  id             String   @id @default(uuid())
-  patient_name   String
-  phone          String
-  email          String?
-  preferred_date DateTime
-  preferred_time String?
-  payment_category String?
-  consultation_fee Int?
-  aadhaar_no       String?
-  id_document_url  String?
-  razorpay_order_id String?
-  razorpay_payment_id String?
-  razorpay_signature String?
-  message        String
-  created_at     DateTime @default(now())
-
-  @@map("appointments")
 }
 
 model ContactMessage {

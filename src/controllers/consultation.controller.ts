@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import { prisma } from "../database/prisma.js";
 import { env } from "../config/env.js";
-import { uploadBuffer } from "../services/cloudinary.service.js";
+import { uploadBuffer } from "../services/r2.service.js";
 import { notifyClinic } from "../services/notification.service.js";
 
 const paymentLabels: Record<string, string> = {
@@ -25,10 +25,28 @@ export async function createConsultation(req: Request, res: Response) {
       payment_category,
       consultation_fee,
       aadhaar_no,
+      preferred_date,
+      preferred_time,
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
     } = req.body;
+
+    // Verify slot capacity (max 5 consultations per 30-min interval on a preferred_date)
+    const selectedDate = new Date(preferred_date);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const count = await prisma.consultation.count({
+      where: {
+        preferred_date: selectedDate,
+        preferred_time: preferred_time,
+      },
+    });
+
+    if (count >= 5) {
+      res.status(400).json({ message: "This time slot is fully booked. Please choose another slot." });
+      return;
+    }
 
     // Verify payment signature
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -85,6 +103,8 @@ export async function createConsultation(req: Request, res: Response) {
         email: email || null,
         address,
         symptoms,
+        preferred_date: selectedDate,
+        preferred_time,
         document_url: documentUrls[0] || null,
         document_urls: documentUrls,
         payment_category,
@@ -110,12 +130,14 @@ export async function createConsultation(req: Request, res: Response) {
        <p><strong>Email:</strong> ${consultation.email || "Not provided"}</p>
        <p><strong>Address:</strong> ${consultation.address}</p>
        <p><strong>Symptoms:</strong> ${consultation.symptoms}</p>
+       <p><strong>Preferred Date:</strong> ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}</p>
+       <p><strong>Preferred Time Slot:</strong> ${consultation.preferred_time || "N/A"}</p>
        <p><strong>Payment:</strong> ${paymentLabel} - Rs. ${consultation.consultation_fee}</p>
        <p><strong>Aadhaar No:</strong> ${consultation.aadhaar_no || "N/A"}</p>
        <p><strong>ID Document:</strong> ${consultation.id_document_url ? `<a href="${consultation.id_document_url}">View ID Document</a>` : "N/A"}</p>
        <p><strong>Razorpay Payment ID:</strong> ${consultation.razorpay_payment_id}</p>
        <p><strong>Medical Documents:</strong> ${documentText}</p>`,
-      `New online consultation request\nName: ${consultation.name}\nAge: ${consultation.age}\nGender: ${consultation.gender}\nPhone: ${consultation.phone}\nPayment: ${paymentLabel} - Rs. ${consultation.consultation_fee}\nAadhaar No: ${consultation.aadhaar_no || "N/A"}\nID Document: ${consultation.id_document_url || "N/A"}\nSymptoms: ${consultation.symptoms}`,
+      `New online consultation request\nName: ${consultation.name}\nAge: ${consultation.age}\nGender: ${consultation.gender}\nPhone: ${consultation.phone}\nPreferred Date: ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}\nPreferred Time: ${consultation.preferred_time || "N/A"}\nPayment: ${paymentLabel} - Rs. ${consultation.consultation_fee}\nAadhaar No: ${consultation.aadhaar_no || "N/A"}\nID Document: ${consultation.id_document_url || "N/A"}\nSymptoms: ${consultation.symptoms}`,
     );
 
     res.status(201).json({ message: "Consultation created successfully", consultation });

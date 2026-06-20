@@ -57,17 +57,50 @@ export async function listContactMessages(_req, res) {
     });
     res.json({ contacts });
 }
-export async function listAppointments(_req, res) {
-    const appointments = await prisma.appointment.findMany({
-        orderBy: { created_at: "desc" },
-        take: 200,
-    });
-    res.json({ appointments });
-}
 export async function listConsultations(_req, res) {
     const consultations = await prisma.consultation.findMany({
         orderBy: { created_at: "desc" },
         take: 200,
     });
     res.json({ consultations });
+}
+export async function getConsultationDetails(req, res) {
+    try {
+        const id = req.params.id;
+        const consultation = await prisma.consultation.findUnique({
+            where: { id },
+        });
+        if (!consultation) {
+            res.status(404).json({ message: "Consultation not found" });
+            return;
+        }
+        // Find other consultations with same name and phone
+        const history = await prisma.consultation.findMany({
+            where: {
+                name: consultation.name,
+                phone: consultation.phone,
+                id: { not: id },
+            },
+            orderBy: { created_at: "desc" },
+        });
+        res.json({ consultation, history });
+    }
+    catch (error) {
+        console.error("Get consultation details error:", error);
+        res.status(500).json({ message: error.message || "Failed to fetch details" });
+    }
+}
+export async function completeConsultation(req, res) {
+    try {
+        const id = req.params.id;
+        const consultation = await prisma.consultation.update({
+            where: { id },
+            data: { is_completed: true },
+        });
+        res.json({ message: "Consultation marked as completed", consultation });
+    }
+    catch (error) {
+        console.error("Complete consultation error:", error);
+        res.status(500).json({ message: error.message || "Failed to complete consultation" });
+    }
 }
