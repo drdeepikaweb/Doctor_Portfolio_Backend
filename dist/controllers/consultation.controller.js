@@ -11,7 +11,7 @@ const paymentLabels = {
 };
 export async function createConsultation(req, res) {
     try {
-        const { name, age, gender, phone, email, address, symptoms, payment_category, consultation_fee, aadhaar_no, preferred_date, preferred_time, razorpay_order_id, razorpay_payment_id, razorpay_signature, } = req.body;
+        const { name, age, gender, phone, email, address, payment_category, consultation_fee, aadhaar_no, preferred_date, preferred_time, razorpay_order_id, razorpay_payment_id, razorpay_signature, } = req.body;
         // Verify slot capacity (max 5 consultations per 30-min interval on a preferred_date)
         const selectedDate = new Date(preferred_date);
         selectedDate.setHours(0, 0, 0, 0);
@@ -73,7 +73,6 @@ export async function createConsultation(req, res) {
                 phone,
                 email: email || null,
                 address,
-                symptoms,
                 preferred_date: selectedDate,
                 preferred_time,
                 document_url: documentUrls[0] || null,
@@ -96,14 +95,13 @@ export async function createConsultation(req, res) {
        <p><strong>Phone:</strong> ${consultation.phone}</p>
        <p><strong>Email:</strong> ${consultation.email || "Not provided"}</p>
        <p><strong>Address:</strong> ${consultation.address}</p>
-       <p><strong>Symptoms:</strong> ${consultation.symptoms}</p>
        <p><strong>Preferred Date:</strong> ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}</p>
        <p><strong>Preferred Time Slot:</strong> ${consultation.preferred_time || "N/A"}</p>
        <p><strong>Payment:</strong> ${paymentLabel} - Rs. ${consultation.consultation_fee}</p>
        <p><strong>Aadhaar No:</strong> ${consultation.aadhaar_no || "N/A"}</p>
        <p><strong>ID Document:</strong> ${consultation.id_document_url ? `<a href="${consultation.id_document_url}">View ID Document</a>` : "N/A"}</p>
        <p><strong>Razorpay Payment ID:</strong> ${consultation.razorpay_payment_id}</p>
-       <p><strong>Medical Documents:</strong> ${documentText}</p>`, `New online consultation request\nName: ${consultation.name}\nAge: ${consultation.age}\nGender: ${consultation.gender}\nPhone: ${consultation.phone}\nPreferred Date: ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}\nPreferred Time: ${consultation.preferred_time || "N/A"}\nPayment: ${paymentLabel} - Rs. ${consultation.consultation_fee}\nAadhaar No: ${consultation.aadhaar_no || "N/A"}\nID Document: ${consultation.id_document_url || "N/A"}\nSymptoms: ${consultation.symptoms}`);
+       <p><strong>Medical Documents:</strong> ${documentText}</p>`, `New online consultation request\nName: ${consultation.name}\nAge: ${consultation.age}\nGender: ${consultation.gender}\nPhone: ${consultation.phone}\nPreferred Date: ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}\nPreferred Time: ${consultation.preferred_time || "N/A"}\nPayment: ${paymentLabel} - Rs. ${consultation.consultation_fee}\nAadhaar No: ${consultation.aadhaar_no || "N/A"}\nID Document: ${consultation.id_document_url || "N/A"}`);
         res.status(201).json({ message: "Consultation created successfully", consultation });
     }
     catch (error) {

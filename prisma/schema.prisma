@@ -15,7 +15,6 @@ model Consultation {
   phone           String
   email           String?
   address         String
-  symptoms        String
   preferred_date  DateTime?
   preferred_time  String?
   is_completed    Boolean  @default(false)
