@@ -8,6 +8,7 @@ const s3 = new S3Client({
         secretAccessKey: env.r2.secretAccessKey,
     },
     region: "auto",
+    forcePathStyle: true, // Required for Cloudflare R2
 });
 export async function uploadBuffer(file) {
     const fileExtension = file.originalname.split(".").pop();

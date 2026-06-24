@@ -6,8 +6,13 @@ export const consultationRules = [
     body("phone").isString().trim().isLength({ min: 10, max: 20 }).withMessage("Phone number must be valid"),
     body("email").optional({ values: "falsy" }).isEmail().normalizeEmail().withMessage("Email must be valid"),
     body("address").isString().trim().isLength({ min: 5, max: 500 }).withMessage("Address must be between 5 and 500 characters"),
-    body("payment_category").isString().trim().isIn(["iitr_student", "iitr_faculty_staff", "iitr_retired_faculty_staff", "others"]).withMessage("Invalid payment category"),
-    body("consultation_fee").isInt({ min: 150, max: 400 }).toInt().withMessage("Consultation fee must be valid"),
+    body("reconsultation_id").optional({ values: "falsy" }).isString().trim(),
+    body("payment_category")
+        .if((value, { req }) => !req.body.reconsultation_id)
+        .isString().trim().isIn(["iitr_student", "iitr_faculty_staff", "iitr_retired_faculty_staff", "others"]).withMessage("Invalid payment category"),
+    body("consultation_fee")
+        .if((value, { req }) => !req.body.reconsultation_id)
+        .isInt({ min: 150, max: 400 }).toInt().withMessage("Consultation fee must be valid"),
     body("aadhaar_no").optional({ values: "falsy", checkFalsy: true }).isString().trim().isLength({ min: 12, max: 12 }).withMessage("Aadhaar number must be exactly 12 digits"),
     body("preferred_date")
         .isISO8601()
@@ -42,7 +47,13 @@ export const consultationRules = [
         "19:30 - 20:00"
     ])
         .withMessage("Invalid preferred time interval"),
-    body("razorpay_order_id").isString().trim().notEmpty().withMessage("Razorpay order ID is required"),
-    body("razorpay_payment_id").isString().trim().notEmpty().withMessage("Razorpay payment ID is required"),
-    body("razorpay_signature").isString().trim().notEmpty().withMessage("Razorpay signature is required"),
+    body("razorpay_order_id")
+        .if((value, { req }) => !req.body.reconsultation_id)
+        .isString().trim().notEmpty().withMessage("Razorpay order ID is required"),
+    body("razorpay_payment_id")
+        .if((value, { req }) => !req.body.reconsultation_id)
+        .isString().trim().notEmpty().withMessage("Razorpay payment ID is required"),
+    body("razorpay_signature")
+        .if((value, { req }) => !req.body.reconsultation_id)
+        .isString().trim().notEmpty().withMessage("Razorpay signature is required"),
 ];

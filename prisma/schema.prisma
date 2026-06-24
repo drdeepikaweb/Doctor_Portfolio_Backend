@@ -28,6 +28,8 @@ model Consultation {
   razorpay_payment_id String?
   razorpay_signature String?
   created_at      DateTime @default(now())
+  submission_id   String?
+  is_reconsultation Boolean  @default(false)
 
   @@map("consultations")
 }
