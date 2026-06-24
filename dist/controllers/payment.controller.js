@@ -2,9 +2,7 @@ import { env } from "../config/env.js";
 import { razorpay } from "../config/razorpay.js";
 const feeMapping = {
     iitr_student: 150,
-    iitr_faculty_staff: 350,
-    iitr_retired_faculty_staff: 250,
-    others: 400,
+    others: 350,
 };
 export async function createOrder(req, res) {
     try {

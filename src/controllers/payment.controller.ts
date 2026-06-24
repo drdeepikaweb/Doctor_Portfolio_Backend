@@ -4,9 +4,7 @@ import { razorpay } from "../config/razorpay.js";
 
 const feeMapping: Record<string, number> = {
   iitr_student: 150,
-  iitr_faculty_staff: 350,
-  iitr_retired_faculty_staff: 250,
-  others: 400,
+  others: 350,
 };
 
 export async function createOrder(req: Request, res: Response) {

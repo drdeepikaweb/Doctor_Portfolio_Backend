@@ -13,6 +13,7 @@ import { doctorRouter } from "./routes/doctor.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
 import { visitorRouter } from "./routes/visitor.routes.js";
 import { paymentRouter } from "./routes/payment.routes.js";
+import { settingsRouter } from "./routes/settings.routes.js";
 export const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
@@ -28,6 +29,7 @@ app.use("/api/contact", contactRouter);
 app.use("/api/visitors", visitorRouter);
 app.use("/api/doctors", doctorRouter);
 app.use("/api/payments", paymentRouter);
+app.use("/api/settings", settingsRouter);
 app.use((_req, res) => {
     res.status(404).json({ message: "Route not found" });
 });

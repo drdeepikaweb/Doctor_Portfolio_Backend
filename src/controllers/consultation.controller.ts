@@ -69,21 +69,16 @@ export async function createConsultation(req: Request, res: Response) {
     const idFile = filesObj?.id_document?.[0];
 
     // Conditional requirement checks
-    const discountCategories = ["iitr_student", "iitr_faculty_staff", "iitr_retired_faculty_staff"];
+    const discountCategories = ["iitr_student"];
     let id_document_url = null;
 
     if (discountCategories.includes(payment_category)) {
       if (!idFile) {
-        res.status(400).json({ message: "Student ID/ IITR Employee ID/Govt ID document upload is required for discount category" });
+        res.status(400).json({ message: "Student ID document upload is required for student category" });
         return;
       }
       const upload = await uploadBuffer(idFile);
       id_document_url = upload.secure_url;
-    } else if (payment_category === "others") {
-      if (!aadhaar_no || aadhaar_no.trim().length !== 12) {
-        res.status(400).json({ message: "Aadhaar No. must be exactly 12 digits for this category" });
-        return;
-      }
     }
 
     // Upload general health documents
