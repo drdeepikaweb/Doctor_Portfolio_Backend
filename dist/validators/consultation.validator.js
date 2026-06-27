@@ -1,4 +1,6 @@
 import { body } from "express-validator";
+import { prisma } from "../database/prisma.js";
+import { generateTimeSlots } from "../utils/slots.js";
 export const consultationRules = [
     body("name").isString().trim().isLength({ min: 2, max: 120 }).withMessage("Name must be between 2 and 120 characters"),
     body("age").isInt({ min: 1, max: 120 }).toInt().withMessage("Age must be between 1 and 120"),
@@ -30,23 +32,15 @@ export const consultationRules = [
     body("preferred_time")
         .isString()
         .trim()
-        .isIn([
-        "10:00 - 10:30",
-        "10:30 - 11:00",
-        "11:00 - 11:30",
-        "11:30 - 12:00",
-        "12:00 - 12:30",
-        "12:30 - 13:00",
-        "13:00 - 13:30",
-        "13:30 - 14:00",
-        "17:00 - 17:30",
-        "17:30 - 18:00",
-        "18:00 - 18:30",
-        "18:30 - 19:00",
-        "19:00 - 19:30",
-        "19:30 - 20:00"
-    ])
-        .withMessage("Invalid preferred time interval"),
+        .custom(async (value) => {
+        const gapSetting = await prisma.setting.findUnique({ where: { key: "slot_gap_minutes" } });
+        const gapMinutes = gapSetting ? Number(gapSetting.value) : 30;
+        const validSlots = generateTimeSlots(gapMinutes);
+        if (!validSlots.includes(value)) {
+            throw new Error("Invalid preferred time interval");
+        }
+        return true;
+    }),
     body("razorpay_order_id")
         .if((value, { req }) => !req.body.reconsultation_id)
         .isString().trim().notEmpty().withMessage("Razorpay order ID is required"),

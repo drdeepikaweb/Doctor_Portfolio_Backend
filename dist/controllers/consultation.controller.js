@@ -13,16 +13,18 @@ const paymentLabels = {
 export async function createConsultation(req, res) {
     try {
         const { name, age, gender, phone, email, address, payment_category, consultation_fee, aadhaar_no, preferred_date, preferred_time, razorpay_order_id, razorpay_payment_id, razorpay_signature, reconsultation_id, } = req.body;
-        // Verify slot capacity (max 5 consultations per 30-min interval on a preferred_date)
+        // Verify slot capacity dynamically
         const selectedDate = new Date(preferred_date);
         selectedDate.setHours(0, 0, 0, 0);
+        const capacitySetting = await prisma.setting.findUnique({ where: { key: "patients_per_slot" } });
+        const capacity = capacitySetting ? Number(capacitySetting.value) : 5;
         const count = await prisma.consultation.count({
             where: {
                 preferred_date: selectedDate,
                 preferred_time: preferred_time,
             },
         });
-        if (count >= 5) {
+        if (count >= capacity) {
             res.status(400).json({ message: "This time slot is fully booked. Please choose another slot." });
             return;
         }
@@ -42,20 +44,20 @@ export async function createConsultation(req, res) {
         let final_payment_category = payment_category || null;
         let id_document_url = null;
         if (reconsultation_id && reconsultation_id.trim() !== "") {
-            // Reconsultation within a week verification
+            // UHID within a week verification
             const original = await prisma.consultation.findFirst({
                 where: {
                     submission_id: reconsultation_id.trim(),
                 },
             });
             if (!original) {
-                res.status(400).json({ message: "Invalid Submission ID. Original consultation not found." });
+                res.status(400).json({ message: "Invalid UHID. Original consultation not found." });
                 return;
             }
             const diffTime = Math.abs(new Date().getTime() - original.created_at.getTime());
             const diffDays = diffTime / (1000 * 60 * 60 * 24);
             if (diffDays > 7) {
-                res.status(400).json({ message: "This Submission ID is older than 7 days. Reconsultation is only free within 7 days." });
+                res.status(400).json({ message: "This UHID is older than 7 days. Follow-up consultation is only free within 7 days." });
                 return;
             }
             is_reconsultation = true;

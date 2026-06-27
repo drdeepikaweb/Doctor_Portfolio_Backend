@@ -33,9 +33,12 @@ export async function createConsultation(req: Request, res: Response) {
       reconsultation_id,
     } = req.body;
 
-    // Verify slot capacity (max 5 consultations per 30-min interval on a preferred_date)
+    // Verify slot capacity dynamically
     const selectedDate = new Date(preferred_date);
     selectedDate.setHours(0, 0, 0, 0);
+
+    const capacitySetting = await prisma.setting.findUnique({ where: { key: "patients_per_slot" } });
+    const capacity = capacitySetting ? Number(capacitySetting.value) : 5;
 
     const count = await prisma.consultation.count({
       where: {
@@ -44,7 +47,7 @@ export async function createConsultation(req: Request, res: Response) {
       },
     });
 
-    if (count >= 5) {
+    if (count >= capacity) {
       res.status(400).json({ message: "This time slot is fully booked. Please choose another slot." });
       return;
     }
@@ -68,7 +71,7 @@ export async function createConsultation(req: Request, res: Response) {
     let id_document_url = null;
 
     if (reconsultation_id && reconsultation_id.trim() !== "") {
-      // Reconsultation within a week verification
+      // UHID within a week verification
       const original = await prisma.consultation.findFirst({
         where: {
           submission_id: reconsultation_id.trim(),
@@ -76,14 +79,14 @@ export async function createConsultation(req: Request, res: Response) {
       });
 
       if (!original) {
-        res.status(400).json({ message: "Invalid Submission ID. Original consultation not found." });
+        res.status(400).json({ message: "Invalid UHID. Original consultation not found." });
         return;
       }
 
       const diffTime = Math.abs(new Date().getTime() - original.created_at.getTime());
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
       if (diffDays > 7) {
-        res.status(400).json({ message: "This Submission ID is older than 7 days. Reconsultation is only free within 7 days." });
+        res.status(400).json({ message: "This UHID is older than 7 days. Follow-up consultation is only free within 7 days." });
         return;
       }
 

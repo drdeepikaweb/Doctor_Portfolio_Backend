@@ -5,6 +5,7 @@ import { upload } from "../middleware/upload.js";
 import { validate } from "../middleware/validate.js";
 import { consultationRules } from "../validators/consultation.validator.js";
 import { prisma } from "../database/prisma.js";
+import { generateTimeSlots } from "../utils/slots.js";
 export const consultationRouter = Router();
 consultationRouter.get("/booked-slots", async (req, res) => {
     try {
@@ -15,6 +16,12 @@ consultationRouter.get("/booked-slots", async (req, res) => {
         }
         const selectedDate = new Date(date);
         selectedDate.setHours(0, 0, 0, 0);
+        // Fetch slot settings
+        const gapSetting = await prisma.setting.findUnique({ where: { key: "slot_gap_minutes" } });
+        const capacitySetting = await prisma.setting.findUnique({ where: { key: "patients_per_slot" } });
+        const gapMinutes = gapSetting ? Number(gapSetting.value) : 30;
+        const capacity = capacitySetting ? Number(capacitySetting.value) : 5;
+        const slots = generateTimeSlots(gapMinutes);
         const counts = await prisma.consultation.groupBy({
             by: ["preferred_time"],
             where: {
@@ -25,13 +32,48 @@ consultationRouter.get("/booked-slots", async (req, res) => {
             },
         });
         const blocked_slots = counts
-            .filter((group) => group._count.id >= 5 && group.preferred_time)
+            .filter((group) => group._count.id >= capacity && group.preferred_time)
             .map((group) => group.preferred_time);
-        res.json({ blocked_slots });
+        res.json({ slots, blocked_slots });
     }
     catch (error) {
         console.error("Get booked slots error:", error);
         res.status(500).json({ message: error.message || "Failed to fetch booked slots" });
+    }
+});
+consultationRouter.get("/by-uhid/:uhid", async (req, res) => {
+    try {
+        const { uhid } = req.params;
+        if (!uhid) {
+            res.status(400).json({ message: "UHID parameter is required" });
+            return;
+        }
+        const original = await prisma.consultation.findFirst({
+            where: {
+                submission_id: uhid.trim(),
+            },
+            orderBy: {
+                created_at: "asc", // Original consultation
+            },
+        });
+        if (!original) {
+            res.status(404).json({ message: "No consultation found with this UHID" });
+            return;
+        }
+        res.json({
+            name: original.name,
+            age: original.age,
+            gender: original.gender,
+            phone: original.phone,
+            email: original.email,
+            address: original.address,
+            payment_category: original.payment_category,
+            created_at: original.created_at,
+        });
+    }
+    catch (error) {
+        console.error("Get consultation by UHID error:", error);
+        res.status(500).json({ message: error.message || "Failed to fetch consultation details" });
     }
 });
 consultationRouter.post("/", upload.fields([
