@@ -1,4 +1,18 @@
 import { prisma } from "../database/prisma.js";
+export async function getAllSettings(req, res) {
+    try {
+        const settings = await prisma.setting.findMany();
+        const result = settings.reduce((acc, curr) => {
+            acc[curr.key] = curr.value;
+            return acc;
+        }, {});
+        res.json(result);
+    }
+    catch (error) {
+        console.error("Get all settings error:", error);
+        res.status(500).json({ message: error.message || "Failed to fetch settings" });
+    }
+}
 export async function getSetting(req, res) {
     try {
         const key = req.params.key;

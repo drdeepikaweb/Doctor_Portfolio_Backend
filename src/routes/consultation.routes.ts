@@ -23,10 +23,26 @@ consultationRouter.get("/booked-slots", async (req, res) => {
     const gapSetting = await prisma.setting.findUnique({ where: { key: "slot_gap_minutes" } });
     const capacitySetting = await prisma.setting.findUnique({ where: { key: "patients_per_slot" } });
 
+    // Fetch timing settings
+    const morningStartSetting = await prisma.setting.findUnique({ where: { key: "morning_start" } });
+    const morningEndSetting = await prisma.setting.findUnique({ where: { key: "morning_end" } });
+    const morningEnabledSetting = await prisma.setting.findUnique({ where: { key: "morning_enabled" } });
+
+    const eveningStartSetting = await prisma.setting.findUnique({ where: { key: "evening_start" } });
+    const eveningEndSetting = await prisma.setting.findUnique({ where: { key: "evening_end" } });
+    const eveningEnabledSetting = await prisma.setting.findUnique({ where: { key: "evening_enabled" } });
+
     const gapMinutes = gapSetting ? Number(gapSetting.value) : 30;
     const capacity = capacitySetting ? Number(capacitySetting.value) : 5;
 
-    const slots = generateTimeSlots(gapMinutes);
+    const slots = generateTimeSlots(gapMinutes, {
+      morningStart: morningStartSetting?.value,
+      morningEnd: morningEndSetting?.value,
+      morningEnabled: morningEnabledSetting ? morningEnabledSetting.value === "true" : true,
+      eveningStart: eveningStartSetting?.value,
+      eveningEnd: eveningEndSetting?.value,
+      eveningEnabled: eveningEnabledSetting ? eveningEnabledSetting.value === "true" : true,
+    });
 
     const counts = await prisma.consultation.groupBy({
       by: ["preferred_time"],
