@@ -19,10 +19,9 @@ export const env = {
         user: process.env.SMTP_USER || "",
         pass: process.env.SMTP_PASS || "",
     },
-    whatsapp: {
-        accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
-        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
-        to: process.env.WHATSAPP_TO || "",
+    telegram: {
+        botToken: process.env.TELEGRAM_BOT_TOKEN || "",
+        chatId: process.env.TELEGRAM_CHAT_ID || "",
     },
     razorpay: {
         keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_dummykeyid",

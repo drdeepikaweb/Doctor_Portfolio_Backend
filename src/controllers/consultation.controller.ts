@@ -4,6 +4,7 @@ import { prisma } from "../database/prisma.js";
 import { env } from "../config/env.js";
 import { uploadBuffer } from "../services/r2.service.js";
 import { notifyClinic } from "../services/notification.service.js";
+import { formatConsultationTelegramMessage } from "../services/telegram.service.js";
 import { getNextSubmissionId } from "../utils/submission.js";
 
 const paymentLabels: Record<string, string> = {
@@ -167,7 +168,7 @@ export async function createConsultation(req: Request, res: Response) {
          <p><strong>Aadhaar No:</strong> ${consultation.aadhaar_no || "N/A"}</p>
          <p><strong>ID Document:</strong> ${consultation.id_document_url ? `<a href="${consultation.id_document_url}">View ID Document</a>` : "N/A"}</p>
          <p><strong>Medical Documents:</strong> ${documentText}</p>`,
-        `New online consultation request (Free Reconsultation)\nName: ${consultation.name}\nAge: ${consultation.age}\nGender: ${consultation.gender}\nPhone: ${consultation.phone}\nPreferred Date: ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}\nPreferred Time: ${consultation.preferred_time || "N/A"}\nSubmission ID: ${consultation.submission_id || "N/A"}\nReconsultation: Yes\nPayment: Free\nAadhaar No: ${consultation.aadhaar_no || "N/A"}\nID Document: ${consultation.id_document_url || "N/A"}`,
+        formatConsultationTelegramMessage(consultation),
       );
 
       res.status(201).json({ message: "Consultation created successfully", consultation });

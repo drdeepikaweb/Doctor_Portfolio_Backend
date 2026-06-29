@@ -1,8 +1,8 @@
-import { sendClinicWhatsapp } from "./whatsapp.service.js";
+import { sendTelegramMessage } from "./telegram.service.js";
 
-export async function notifyClinic(subject: string, html: string, whatsappMessage: string) {
+export async function notifyClinic(subject: string, html: string, message: string) {
   const results = await Promise.allSettled([
-    sendClinicWhatsapp(whatsappMessage),
+    sendTelegramMessage(message),
   ]);
 
   for (const result of results) {

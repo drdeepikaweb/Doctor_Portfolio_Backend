@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { env } from "../config/env.js";
 import { prisma } from "../database/prisma.js";
 import { notifyClinic } from "../services/notification.service.js";
+import { formatConsultationTelegramMessage } from "../services/telegram.service.js";
 
 const paymentLabels: Record<string, string> = {
   iitr_student: "IITR Students",
@@ -147,7 +148,7 @@ export async function verifyPayment(req: Request, res: Response) {
          <p><strong>ID Document:</strong> ${updatedConsultation.id_document_url ? `<a href="${updatedConsultation.id_document_url}">View ID Document</a>` : "N/A"}</p>
          <p><strong>PhonePe Transaction ID:</strong> ${updatedConsultation.phonepe_transaction_id || "N/A"}</p>
          <p><strong>Medical Documents:</strong> ${documentText}</p>`,
-        `New online consultation request\nName: ${updatedConsultation.name}\nAge: ${updatedConsultation.age}\nGender: ${updatedConsultation.gender}\nPhone: ${updatedConsultation.phone}\nPreferred Date: ${updatedConsultation.preferred_date ? updatedConsultation.preferred_date.toDateString() : "N/A"}\nPreferred Time: ${updatedConsultation.preferred_time || "N/A"}\nSubmission ID: ${updatedConsultation.submission_id || "N/A"}\nReconsultation: No\nPayment: ${paymentLabel} - Rs. ${updatedConsultation.consultation_fee}\nAadhaar No: ${updatedConsultation.aadhaar_no || "N/A"}\nID Document: ${updatedConsultation.id_document_url || "N/A"}`
+        formatConsultationTelegramMessage(updatedConsultation),
       );
 
       res.status(200).json({
