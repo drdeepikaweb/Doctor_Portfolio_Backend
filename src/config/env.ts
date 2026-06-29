@@ -31,9 +31,11 @@ export const env = {
     keySecret: process.env.RAZORPAY_KEY_SECRET || "dummysecret",
   },
   phonepe: {
-    merchantId: process.env.PHONEPE_MERCHANT_ID || "PGTESTPAYUAT",
-    saltKey: process.env.PHONEPE_SALT_KEY || "852059ab-a053-4cf7-8f2b-3286f778b354",
-    saltIndex: process.env.PHONEPE_SALT_INDEX || "1",
-    host: process.env.PHONEPE_HOST || "https://api-preprod.phonepe.com/apis/pg-sandbox",
+    clientId: process.env.PHONEPE_CLIENT_ID || "PGTESTPAYUAT",
+    clientSecret: process.env.PHONEPE_CLIENT_SECRET || "dummysecret",
+    clientVersion: process.env.PHONEPE_CLIENT_VERSION || "1",
+    oauthUrl: process.env.PHONEPE_OAUTH_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token",
+    checkoutUrl: process.env.PHONEPE_CHECKOUT_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox/checkout/v2/pay",
+    statusUrl: process.env.PHONEPE_STATUS_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox/checkout/v2/order",
   },
 };

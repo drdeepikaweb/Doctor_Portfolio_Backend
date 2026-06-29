@@ -41,13 +41,4 @@ export const consultationRules = [
         }
         return true;
     }),
-    body("razorpay_order_id")
-        .if((value, { req }) => !req.body.reconsultation_id)
-        .isString().trim().notEmpty().withMessage("Razorpay order ID is required"),
-    body("razorpay_payment_id")
-        .if((value, { req }) => !req.body.reconsultation_id)
-        .isString().trim().notEmpty().withMessage("Razorpay payment ID is required"),
-    body("razorpay_signature")
-        .if((value, { req }) => !req.body.reconsultation_id)
-        .isString().trim().notEmpty().withMessage("Razorpay signature is required"),
 ];

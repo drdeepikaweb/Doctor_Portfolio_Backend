@@ -176,58 +176,90 @@ export async function createConsultation(req: Request, res: Response) {
 
     // Paid consultation - initiate PhonePe redirect payment
     const amountInPaise = final_consultation_fee * 100;
-    const transactionId = consultation.id;
-    const merchantId = env.phonepe.merchantId;
-    const saltKey = env.phonepe.saltKey;
-    const saltIndex = env.phonepe.saltIndex;
-    const host = env.phonepe.host;
+    const clientId = env.phonepe.clientId;
+    const clientSecret = env.phonepe.clientSecret;
+    const clientVersion = env.phonepe.clientVersion;
+    const oauthUrl = env.phonepe.oauthUrl;
+    const checkoutUrl = env.phonepe.checkoutUrl;
 
-    const payload = {
-      merchantId: merchantId,
-      merchantTransactionId: transactionId,
-      merchantUserId: `MUID_${phone.replace(/\D/g, "") || Date.now()}`,
+    console.log(`Fetching PhonePe OAuth token for client: ${clientId}`);
+
+    // Fetch Access Token
+    const tokenParams = new URLSearchParams();
+    tokenParams.append("client_id", clientId);
+    tokenParams.append("client_secret", clientSecret);
+    tokenParams.append("client_version", clientVersion);
+    tokenParams.append("grant_type", "client_credentials");
+
+    const tokenResponse = await fetch(oauthUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: tokenParams.toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error("PhonePe OAuth token fetching failed response:", errorText);
+      res.status(502).json({ message: "Failed to authenticate with PhonePe payment gateway. Please try again." });
+      return;
+    }
+
+    const tokenData = (await tokenResponse.json()) as any;
+    const accessToken = tokenData.access_token;
+
+    if (!accessToken) {
+      console.error("No access token in PhonePe OAuth response:", tokenData);
+      res.status(502).json({ message: "Failed to authenticate with PhonePe payment gateway." });
+      return;
+    }
+
+    // Create V2 checkout pay request
+    const payPayload = {
+      merchantOrderId: consultation.id,
       amount: amountInPaise,
-      redirectUrl: `${env.frontendUrl}/online-consultation/payment-callback?id=${consultation.id}`,
-      redirectMode: "REDIRECT",
-      mobileNumber: phone.replace(/\D/g, "").slice(-10),
-      paymentInstrument: {
-        type: "PAY_PAGE"
+      expireAfter: 1200,
+      paymentFlow: {
+        type: "PG_CHECKOUT",
+        message: "Consultation Fee Payment",
+        merchantUrls: {
+          redirectUrl: `${env.frontendUrl}/online-consultation/payment-callback?id=${consultation.id}`
+        }
       }
     };
 
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
-    const stringToSign = base64Payload + "/pg/v1/pay" + saltKey;
-    const sha256 = crypto.createHash("sha256").update(stringToSign).digest("hex");
-    const xVerify = `${sha256}###${saltIndex}`;
+    console.log(`Initiating PhonePe V2 payment for consultation ${consultation.id}, amount: ${amountInPaise} paise`);
 
-    console.log(`Initiating PhonePe payment for consultation ${consultation.id}, amount: ${amountInPaise} paise`);
-
-    const phonepeResponse = await fetch(`${host}/pg/v1/pay`, {
+    const phonepeResponse = await fetch(checkoutUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-VERIFY": xVerify,
+        "Authorization": `O-Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ request: base64Payload }),
+      body: JSON.stringify(payPayload),
     });
 
     if (!phonepeResponse.ok) {
       const errorText = await phonepeResponse.text();
-      console.error("PhonePe payment initiation failed response:", errorText);
-      res.status(502).json({ message: "Payment gateway initiation failed. Please try again." });
+      console.error("PhonePe V2 payment initiation failed response:", errorText);
+      res.status(502).json({ message: "Payment gateway checkout failed. Please try again." });
       return;
     }
 
-    const phonepeData = await phonepeResponse.json() as any;
-    if (phonepeData.success && phonepeData.data?.instrumentResponse?.redirectInfo?.url) {
-      const redirectUrl = phonepeData.data.instrumentResponse.redirectInfo.url;
+    const phonepeData = (await phonepeResponse.json()) as any;
+    console.log("PhonePe V2 checkout response:", phonepeData);
+
+    const redirectUrl = phonepeData.redirectUrl || phonepeData.data?.redirectUrl || phonepeData.data?.instrumentResponse?.redirectInfo?.url;
+
+    if (redirectUrl) {
       res.status(201).json({
         message: "Redirecting to payment gateway",
         redirectUrl,
         consultation,
       });
     } else {
-      console.error("PhonePe payment initiation failed payload:", phonepeData);
+      console.error("PhonePe V2 checkout URL not found in payload:", phonepeData);
       res.status(502).json({ message: phonepeData.message || "Failed to generate checkout link from payment gateway" });
     }
   } catch (error: any) {

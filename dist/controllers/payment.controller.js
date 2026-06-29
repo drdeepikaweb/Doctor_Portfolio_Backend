@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { env } from "../config/env.js";
 import { prisma } from "../database/prisma.js";
 import { notifyClinic } from "../services/notification.service.js";
@@ -32,34 +31,64 @@ export async function verifyPayment(req, res) {
             });
             return;
         }
-        const merchantId = env.phonepe.merchantId;
-        const saltKey = env.phonepe.saltKey;
-        const saltIndex = env.phonepe.saltIndex;
-        const host = env.phonepe.host;
-        // Call PhonePe status check API
-        // GET /pg/v1/status/{merchantId}/{transactionId}
-        const stringToSign = `/pg/v1/status/${merchantId}/${consultation.id}${saltKey}`;
-        const sha256 = crypto.createHash("sha256").update(stringToSign).digest("hex");
-        const xVerify = `${sha256}###${saltIndex}`;
-        console.log(`Checking PhonePe transaction status for transaction: ${consultation.id}`);
-        const phonepeResponse = await fetch(`${host}/pg/v1/status/${merchantId}/${consultation.id}`, {
+        const clientId = env.phonepe.clientId;
+        const clientSecret = env.phonepe.clientSecret;
+        const clientVersion = env.phonepe.clientVersion;
+        const oauthUrl = env.phonepe.oauthUrl;
+        const statusUrl = env.phonepe.statusUrl;
+        console.log(`Fetching PhonePe OAuth token for client: ${clientId}`);
+        // Fetch Access Token
+        const tokenParams = new URLSearchParams();
+        tokenParams.append("client_id", clientId);
+        tokenParams.append("client_secret", clientSecret);
+        tokenParams.append("client_version", clientVersion);
+        tokenParams.append("grant_type", "client_credentials");
+        const tokenResponse = await fetch(oauthUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: tokenParams.toString(),
+        });
+        if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            console.error("PhonePe OAuth token fetching failed response:", errorText);
+            res.status(502).json({ success: false, message: "Payment status check failed (OAuth authentication failure)." });
+            return;
+        }
+        const tokenData = (await tokenResponse.json());
+        const accessToken = tokenData.access_token;
+        if (!accessToken) {
+            console.error("No access token in PhonePe OAuth response:", tokenData);
+            res.status(502).json({ success: false, message: "Payment status check failed (OAuth token missing)." });
+            return;
+        }
+        // Call PhonePe V2 Order Status check API
+        // GET {statusUrl}/{merchantOrderId}/status
+        console.log(`Checking PhonePe V2 transaction status for transaction: ${consultation.id}`);
+        const phonepeResponse = await fetch(`${statusUrl}/${consultation.id}/status`, {
             method: "GET",
             headers: {
-                "Content-Type": "application/json",
-                "X-VERIFY": xVerify,
-                "X-MERCHANT-ID": merchantId,
+                "Authorization": `O-Bearer ${accessToken}`,
             },
         });
         if (!phonepeResponse.ok) {
             const errorText = await phonepeResponse.text();
-            console.error("PhonePe status check failed response:", errorText);
+            console.error("PhonePe V2 status check failed response:", errorText);
             res.status(502).json({ success: false, message: "Payment status check failed. Please check back later." });
             return;
         }
         const phonepeData = (await phonepeResponse.json());
-        console.log("PhonePe status response:", phonepeData);
-        if (phonepeData.success && phonepeData.code === "PAYMENT_SUCCESS") {
-            const providerReferenceId = phonepeData.data?.providerReferenceId || "PhonePeRef";
+        console.log("PhonePe V2 status response:", phonepeData);
+        const state = phonepeData.state || phonepeData.data?.state;
+        const isSuccess = state === "COMPLETED" || phonepeData.code === "PAYMENT_SUCCESS" || phonepeData.success === true;
+        const isPending = state === "PENDING" || state === "INITIATED" || phonepeData.code === "PAYMENT_PENDING";
+        if (isSuccess) {
+            const providerReferenceId = phonepeData.paymentDetails?.[0]?.transactionId ||
+                phonepeData.orderId ||
+                phonepeData.data?.transactionId ||
+                phonepeData.data?.providerReferenceId ||
+                "PhonePeRef";
             // Update consultation payment status in database
             const updatedConsultation = await prisma.consultation.update({
                 where: { id },
@@ -94,7 +123,7 @@ export async function verifyPayment(req, res) {
                 consultation: updatedConsultation,
             });
         }
-        else if (phonepeData.code === "PAYMENT_PENDING") {
+        else if (isPending) {
             res.status(200).json({
                 success: false,
                 pending: true,
