@@ -96,22 +96,6 @@ export async function createConsultation(req: Request, res: Response) {
       const origIdDoc = original.id_document_url;
       id_document_url = origIdDoc && origIdDoc.includes("localhost:5000/uploads") ? null : origIdDoc;
     } else {
-      // Verify payment signature
-      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-        res.status(400).json({ message: "Payment details are required" });
-        return;
-      }
-
-      const expectedSignature = crypto
-        .createHmac("sha256", env.razorpay.keySecret)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest("hex");
-
-      if (expectedSignature !== razorpay_signature) {
-        res.status(400).json({ message: "Payment verification failed. Invalid signature." });
-        return;
-      }
-
       // Conditional requirement checks
       const discountCategories = ["iitr_student"];
       if (discountCategories.includes(payment_category)) {
@@ -156,39 +140,96 @@ export async function createConsultation(req: Request, res: Response) {
         consultation_fee: final_consultation_fee,
         aadhaar_no: aadhaar_no || null,
         id_document_url,
-        razorpay_order_id: razorpay_order_id || null,
-        razorpay_payment_id: razorpay_payment_id || null,
-        razorpay_signature: razorpay_signature || null,
         submission_id: final_submission_id,
         is_reconsultation,
+        payment_verified: is_reconsultation,
       },
     });
 
-    const paymentLabel = paymentLabels[final_payment_category || ""] || final_payment_category || "Not selected";
-    const documentText = documentUrls.length ? documentUrls.join(", ") : "Not uploaded";
+    if (is_reconsultation) {
+      const paymentLabel = paymentLabels[final_payment_category || ""] || final_payment_category || "Not selected";
+      const documentText = documentUrls.length ? documentUrls.join(", ") : "Not uploaded";
 
-    await notifyClinic(
-      is_reconsultation ? "New online consultation request (Free Reconsultation)" : "New online consultation request (Paid)",
-      `<h2>Online Consultation</h2>
-       <p><strong>Name:</strong> ${consultation.name}</p>
-       <p><strong>Age:</strong> ${consultation.age}</p>
-       <p><strong>Gender:</strong> ${consultation.gender}</p>
-       <p><strong>Phone:</strong> ${consultation.phone}</p>
-       <p><strong>Email:</strong> ${consultation.email || "Not provided"}</p>
-       <p><strong>Address:</strong> ${consultation.address}</p>
-       <p><strong>Preferred Date:</strong> ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}</p>
-       <p><strong>Preferred Time Slot:</strong> ${consultation.preferred_time || "N/A"}</p>
-       <p><strong>Submission ID:</strong> ${consultation.submission_id || "N/A"}</p>
-       <p><strong>Reconsultation:</strong> ${consultation.is_reconsultation ? "Yes (Free)" : "No (Paid)"}</p>
-       <p><strong>Payment:</strong> ${paymentLabel} - Rs. ${consultation.consultation_fee}</p>
-       <p><strong>Aadhaar No:</strong> ${consultation.aadhaar_no || "N/A"}</p>
-       <p><strong>ID Document:</strong> ${consultation.id_document_url ? `<a href="${consultation.id_document_url}">View ID Document</a>` : "N/A"}</p>
-       <p><strong>Razorpay Payment ID:</strong> ${consultation.razorpay_payment_id || "N/A"}</p>
-       <p><strong>Medical Documents:</strong> ${documentText}</p>`,
-      `New online consultation request\nName: ${consultation.name}\nAge: ${consultation.age}\nGender: ${consultation.gender}\nPhone: ${consultation.phone}\nPreferred Date: ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}\nPreferred Time: ${consultation.preferred_time || "N/A"}\nSubmission ID: ${consultation.submission_id || "N/A"}\nReconsultation: ${consultation.is_reconsultation ? "Yes" : "No"}\nPayment: ${paymentLabel} - Rs. ${consultation.consultation_fee}\nAadhaar No: ${consultation.aadhaar_no || "N/A"}\nID Document: ${consultation.id_document_url || "N/A"}`,
-    );
+      await notifyClinic(
+        "New online consultation request (Free Reconsultation)",
+        `<h2>Online Consultation</h2>
+         <p><strong>Name:</strong> ${consultation.name}</p>
+         <p><strong>Age:</strong> ${consultation.age}</p>
+         <p><strong>Gender:</strong> ${consultation.gender}</p>
+         <p><strong>Phone:</strong> ${consultation.phone}</p>
+         <p><strong>Email:</strong> ${consultation.email || "Not provided"}</p>
+         <p><strong>Address:</strong> ${consultation.address}</p>
+         <p><strong>Preferred Date:</strong> ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}</p>
+         <p><strong>Preferred Time Slot:</strong> ${consultation.preferred_time || "N/A"}</p>
+         <p><strong>Submission ID:</strong> ${consultation.submission_id || "N/A"}</p>
+         <p><strong>Reconsultation:</strong> Yes (Free)</p>
+         <p><strong>Payment:</strong> Free - Rs. 0</p>
+         <p><strong>Aadhaar No:</strong> ${consultation.aadhaar_no || "N/A"}</p>
+         <p><strong>ID Document:</strong> ${consultation.id_document_url ? `<a href="${consultation.id_document_url}">View ID Document</a>` : "N/A"}</p>
+         <p><strong>Medical Documents:</strong> ${documentText}</p>`,
+        `New online consultation request (Free Reconsultation)\nName: ${consultation.name}\nAge: ${consultation.age}\nGender: ${consultation.gender}\nPhone: ${consultation.phone}\nPreferred Date: ${consultation.preferred_date ? consultation.preferred_date.toDateString() : "N/A"}\nPreferred Time: ${consultation.preferred_time || "N/A"}\nSubmission ID: ${consultation.submission_id || "N/A"}\nReconsultation: Yes\nPayment: Free\nAadhaar No: ${consultation.aadhaar_no || "N/A"}\nID Document: ${consultation.id_document_url || "N/A"}`,
+      );
 
-    res.status(201).json({ message: "Consultation created successfully", consultation });
+      res.status(201).json({ message: "Consultation created successfully", consultation });
+      return;
+    }
+
+    // Paid consultation - initiate PhonePe redirect payment
+    const amountInPaise = final_consultation_fee * 100;
+    const transactionId = consultation.id;
+    const merchantId = env.phonepe.merchantId;
+    const saltKey = env.phonepe.saltKey;
+    const saltIndex = env.phonepe.saltIndex;
+    const host = env.phonepe.host;
+
+    const payload = {
+      merchantId: merchantId,
+      merchantTransactionId: transactionId,
+      merchantUserId: `MUID_${phone.replace(/\D/g, "") || Date.now()}`,
+      amount: amountInPaise,
+      redirectUrl: `${env.frontendUrl}/online-consultation/payment-callback?id=${consultation.id}`,
+      redirectMode: "REDIRECT",
+      mobileNumber: phone.replace(/\D/g, "").slice(-10),
+      paymentInstrument: {
+        type: "PAY_PAGE"
+      }
+    };
+
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
+    const stringToSign = base64Payload + "/pg/v1/pay" + saltKey;
+    const sha256 = crypto.createHash("sha256").update(stringToSign).digest("hex");
+    const xVerify = `${sha256}###${saltIndex}`;
+
+    console.log(`Initiating PhonePe payment for consultation ${consultation.id}, amount: ${amountInPaise} paise`);
+
+    const phonepeResponse = await fetch(`${host}/pg/v1/pay`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+      },
+      body: JSON.stringify({ request: base64Payload }),
+    });
+
+    if (!phonepeResponse.ok) {
+      const errorText = await phonepeResponse.text();
+      console.error("PhonePe payment initiation failed response:", errorText);
+      res.status(502).json({ message: "Payment gateway initiation failed. Please try again." });
+      return;
+    }
+
+    const phonepeData = await phonepeResponse.json() as any;
+    if (phonepeData.success && phonepeData.data?.instrumentResponse?.redirectInfo?.url) {
+      const redirectUrl = phonepeData.data.instrumentResponse.redirectInfo.url;
+      res.status(201).json({
+        message: "Redirecting to payment gateway",
+        redirectUrl,
+        consultation,
+      });
+    } else {
+      console.error("PhonePe payment initiation failed payload:", phonepeData);
+      res.status(502).json({ message: phonepeData.message || "Failed to generate checkout link from payment gateway" });
+    }
   } catch (error: any) {
     console.error("Consultation error:", error);
     res.status(500).json({ message: error.message || "Failed to create consultation" });

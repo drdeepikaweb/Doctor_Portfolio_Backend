@@ -27,6 +27,8 @@ model Consultation {
   razorpay_order_id String?
   razorpay_payment_id String?
   razorpay_signature String?
+  phonepe_transaction_id String?
+  payment_verified       Boolean  @default(false)
   created_at      DateTime @default(now())
   submission_id   String?
   is_reconsultation Boolean  @default(false)

@@ -59,7 +59,17 @@ export async function listContactMessages(_req, res) {
 }
 export async function listConsultations(_req, res) {
     const consultations = await prisma.consultation.findMany({
-        orderBy: { created_at: "desc" },
+        where: {
+            OR: [
+                { is_reconsultation: true },
+                { payment_verified: true }
+            ]
+        },
+        orderBy: [
+            { preferred_date: "asc" },
+            { preferred_time: "asc" },
+            { created_at: "desc" }
+        ],
         take: 200,
     });
     res.json({ consultations });
