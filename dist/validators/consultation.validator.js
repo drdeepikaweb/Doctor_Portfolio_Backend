@@ -27,6 +27,12 @@ export const consultationRules = [
         if (selectedDate < today) {
             throw new Error("Preferred date cannot be in the past");
         }
+        const maxDate = new Date();
+        maxDate.setDate(maxDate.getDate() + 7);
+        maxDate.setHours(23, 59, 59, 999);
+        if (selectedDate > maxDate) {
+            throw new Error("Preferred date must be within 1 week in the future");
+        }
         return true;
     }),
     body("preferred_time")
