@@ -61,6 +61,8 @@ model Doctor {
   email         String          @unique
   password_hash String
   is_active     Boolean         @default(true)
+  otp_code      String?
+  otp_expires_at DateTime?
   created_at    DateTime        @default(now())
   updated_at    DateTime        @updatedAt
   sessions      DoctorSession[]
